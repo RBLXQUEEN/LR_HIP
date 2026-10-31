@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Medical Insurance Charges — Regression Model</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400;1,6..72,500&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F4F1EA;
+  --ink:#17150F;
+  --ink-2:#4C4941;
+  --ink-3:#8A857A;
+  --rule:rgba(23,21,15,0.22);
+  --rule-soft:rgba(23,21,15,0.10);
+  --accent:#B3261E;
+  --slate:#3E5C6B;
+  --grotesk:'Archivo',Helvetica,Arial,sans-serif;
+  --serif:'Newsreader',Georgia,serif;
+  --mono:'Space Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--paper);color:var(--ink);font-family:var(--grotesk);
+  font-size:15px;line-height:1.55;padding-top:46px;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--accent);color:var(--paper)}
+
+/* ============ running head ============ */
+.rh{
+  position:fixed;top:0;left:0;right:0;height:46px;z-index:50;
+  background:var(--paper);border-bottom:1px solid var(--rule);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 32px;gap:20px;
+}
+.rh__l,.rh__r{display:flex;align-items:center;gap:14px;
+  font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.rh__l b{color:var(--ink);font-weight:700}
+.rh__r{color:var(--ink-2)}
+.toggle{
+  font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  border:1px solid var(--rule);background:none;color:var(--ink-2);
+  padding:6px 12px;cursor:pointer;transition:all .12s;
+}
+.toggle:hover{border-color:var(--ink);color:var(--ink)}
+.toggle[data-on="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+
+/* ============ shell ============ */
+.sheet{max-width:1220px;margin:0 auto;padding:0 32px 100px}
+
+/* ============ masthead ============ */
+.mast{padding:72px 0 34px;border-bottom:2px solid var(--ink)}
+.mast__meta{
+  display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--ink-3);margin-bottom:44px;
+}
+.mast__meta b{color:var(--ink);font-weight:700}
+h1{
+  font-family:var(--grotesk);font-weight:800;font-size:clamp(46px,7.2vw,96px);
+  line-height:.92;letter-spacing:-.045em;text-transform:uppercase;
+  margin-bottom:26px;max-width:15ch;
+}
+h1 em{font-style:normal;color:var(--accent)}
+.mast__dek{
+  font-family:var(--serif);font-style:italic;font-size:clamp(19px,2.1vw,25px);
+  line-height:1.42;color:var(--ink-2);max-width:62ch;
+}
+
+/* ============ chapter ============ */
+.chapter{
+  display:grid;grid-template-columns:78px minmax(0,1fr);gap:44px;
+  padding:56px 0;border-bottom:1px solid var(--rule-soft);
+}
+.chapter:last-of-type{border-bottom:none}
+.chapter__num{
+  font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--ink-3);
+  padding-top:9px;
+}
+.chapter__num span{display:block;font-size:30px;color:var(--ink);font-weight:700;
+  letter-spacing:-.02em;margin-top:4px;font-family:var(--grotesk)}
+h2{
+  font-family:var(--grotesk);font-weight:700;font-size:clamp(25px,3.1vw,38px);
+  line-height:1.06;letter-spacing:-.03em;margin-bottom:20px;max-width:24ch;
+}
+h3{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--ink-3);font-weight:400;margin-bottom:14px;
+}
+p{max-width:68ch;color:var(--ink-2);margin-bottom:15px}
+p strong{color:var(--ink);font-weight:600}
+p.lead{font-size:17.5px;color:var(--ink);max-width:60ch}
+
+/* ============ say-this block ============ */
+.say{
+  display:none;margin:22px 0 0;padding:16px 0 16px 20px;
+  border-left:2px solid var(--accent);max-width:66ch;
+}
+body.script .say{display:block}
+.say__label{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--accent);display:block;margin-bottom:7px;
+}
+.say p{
+  font-family:var(--serif);font-style:italic;font-size:16.5px;line-height:1.55;
+  color:var(--ink);margin:0;max-width:none;
+}
+
+/* ============ data table ============ */
+.tbl-wrap{overflow-x:auto;margin:6px 0 4px}
+table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px}
+caption{
+  caption-side:top;text-align:left;font-family:var(--mono);font-size:9.5px;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);padding-bottom:10px;
+}
+th{
+  text-align:left;font-weight:400;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink-3);padding:8px 14px 8px 0;border-bottom:1px solid var(--ink);
+}
+td{padding:8px 14px 8px 0;border-bottom:1px solid var(--rule-soft);color:var(--ink-2)}
+td.n{text-align:right;font-variant-numeric:tabular-nums;color:var(--ink)}
+tr:last-child td{border-bottom:1px solid var(--rule)}
+
+/* ============ equation ============ */
+.eqbox{
+  border-top:1px solid var(--ink);border-bottom:1px solid var(--ink);
+  padding:22px 0;margin:6px 0 20px;overflow-x:auto;
+}
+.eq{
+  font-family:var(--mono);font-size:12.5px;line-height:2.1;color:var(--ink);
+  white-space:nowrap;font-variant-numeric:tabular-nums;
+}
+.eq i{font-style:normal;color:var(--ink-3)}
+.eq b{font-weight:700;color:var(--accent)}
+
+/* ============ demo ============ */
+.demo{
+  display:grid;grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr);gap:56px;
+  align-items:start;
+}
+@media(max-width:940px){.demo{grid-template-columns:1fr;gap:36px}}
+.ctl{margin-bottom:20px}
+.ctl:last-child{margin-bottom:0}
+.ctl__top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;gap:12px}
+.ctl__top label{font-size:12.5px;font-weight:600;letter-spacing:.01em}
+.ctl__top output{
+  font-family:var(--mono);font-size:13px;font-weight:700;color:var(--accent);
+  font-variant-numeric:tabular-nums;
+}
+input[type=range]{
+  -webkit-appearance:none;appearance:none;width:100%;height:2px;background:var(--rule);
+  outline:none;cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--ink);
+  border:2px solid var(--paper);box-shadow:0 0 0 1px var(--ink);cursor:pointer;transition:transform .1s;
+}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.18)}
+input[type=range]::-moz-range-thumb{
+  width:12px;height:12px;border-radius:50%;background:var(--ink);
+  border:2px solid var(--paper);box-shadow:0 0 0 1px var(--ink);cursor:pointer;
+}
+.radios{display:flex;gap:0;border:1px solid var(--rule)}
+.radios button{
+  flex:1;padding:8px 4px;font-family:var(--grotesk);font-size:11.5px;font-weight:600;
+  background:none;border:none;border-right:1px solid var(--rule);color:var(--ink-2);
+  cursor:pointer;transition:background .1s,color .1s;
+}
+.radios button:last-child{border-right:none}
+.radios button:hover{background:rgba(23,21,15,.05)}
+.radios button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.aside{font-size:11px;color:var(--ink-3);margin-top:6px}
+
+/* ============ readout ============ */
+.readout{border-top:2px solid var(--ink);padding-top:20px}
+.readout__cap{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--ink-3);margin-bottom:10px;
+}
+.figure{
+  font-family:var(--grotesk);font-weight:800;font-size:clamp(50px,6.6vw,78px);
+  line-height:.86;letter-spacing:-.05em;font-variant-numeric:tabular-nums;
+  display:flex;align-items:baseline;gap:4px;
+}
+.figure .sym{font-size:.34em;font-weight:600;color:var(--ink-3);letter-spacing:0}
+.delta{
+  margin-top:14px;font-family:var(--mono);font-size:11.5px;letter-spacing:.03em;
+  color:var(--ink-2);display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+}
+.delta b{font-weight:700;padding:3px 7px;font-variant-numeric:tabular-nums}
+.delta b.up{background:rgba(179,38,30,.10);color:var(--accent)}
+.delta b.dn{background:rgba(62,92,107,.12);color:var(--slate)}
+
+/* bars */
+.bars{margin-top:30px;border-top:1px solid var(--rule-soft);padding-top:18px}
+.bar{display:grid;grid-template-columns:88px 1fr 74px;gap:10px;align-items:center;margin-bottom:7px}
+.bar__n{font-size:11px;color:var(--ink-2);text-align:right;letter-spacing:.01em}
+.bar__t{position:relative;height:13px;border-bottom:1px solid var(--rule-soft)}
+.bar__z{position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--rule)}
+.bar__f{position:absolute;top:1px;bottom:3px;transition:all .3s cubic-bezier(.4,0,.2,1);min-width:2px}
+.bar__f.p{left:50%;background:var(--accent)}
+.bar__f.n{right:50%;background:var(--slate)}
+.bar__v{font-family:var(--mono);font-size:10.5px;font-weight:700;text-align:right;
+  font-variant-numeric:tabular-nums}
+
+.eval{margin-top:30px;border-top:1px solid var(--rule-soft);padding-top:16px}
+.eval__row{display:flex;justify-content:space-between;gap:12px;font-family:var(--mono);
+  font-size:10.5px;padding:5px 0;border-bottom:1px dotted var(--rule-soft);color:var(--ink-3)}
+.eval__row span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.eval__row b{color:var(--ink);font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.eval__tot{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11.5px;
+  padding-top:10px;border-top:1px solid var(--ink);margin-top:8px;letter-spacing:.04em}
+.eval__tot b{color:var(--accent);font-weight:700;font-variant-numeric:tabular-nums}
+
+/* scatter */
+.plot{margin-top:34px;border-top:1px solid var(--rule-soft);padding-top:18px}
+.plot svg{display:block;width:100%;height:auto}
+.plot__key{display:flex;gap:22px;margin-top:10px;font-family:var(--mono);font-size:9.5px;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);flex-wrap:wrap}
+.plot__key i{display:inline-block;width:7px;height:7px;margin-right:6px;vertical-align:middle}
+
+/* metrics row */
+.mrow{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:2px solid var(--ink);margin:8px 0 22px}
+@media(max-width:720px){.mrow{grid-template-columns:repeat(2,1fr)}}
+.mcell{padding:20px 18px 18px 0;border-right:1px solid var(--rule-soft)}
+.mcell:last-child{border-right:none}
+.mcell b{display:block;font-family:var(--grotesk);font-weight:800;font-size:clamp(26px,3.4vw,40px);
+  letter-spacing:-.04em;line-height:1;font-variant-numeric:tabular-nums}
+.mcell span{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--ink-3);margin-top:8px}
+
+/* closing note */
+.footnote{
+  border-top:2px solid var(--ink);margin-top:56px;padding-top:20px;
+  font-family:var(--mono);font-size:10.5px;line-height:1.85;color:var(--ink-3);
+  max-width:88ch;
+}
+.footnote b{color:var(--ink-2);font-weight:700}
+
+@media(max-width:760px){
+  .sheet{padding:0 20px 70px}
+  .chapter{grid-template-columns:1fr;gap:14px;padding:40px 0}
+  .chapter__num{padding-top:0;display:flex;align-items:baseline;gap:10px}
+  .chapter__num span{font-size:20px;margin-top:0}
+  .rh{padding:0 20px}
+  .rh__l{display:none}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body class="script">
+
+<div class="rh">
+  <div class="rh__l"><b>Regression</b><span>·</span><span>Medical insurance charges</span></div>
+  <div class="rh__r">
+    <span id="rh-hint">Press S to toggle script</span>
+    <button class="toggle" id="scriptBtn" data-on="true">Script on</button>
+  </div>
+</div>
+
+<div class="sheet">
+
+  <!-- ============ MASTHEAD ============ -->
+  <header class="mast">
+    <div class="mast__meta">
+      <span><b>Predictive Analytics</b> — CSE 3141</span>
+      <span>Bhoomi Tiwari</span>
+      <span>Manipal University Jaipur</span>
+      <span>Regression model</span>
+    </div>
+    <h1>What will this person's insurance <em>cost</em>?</h1>
+    <p class="mast__dek">A linear regression trained on 1,338 insurance records, running live in this page.
+      Every figure below is computed in your browser from the equation in section 03 — nothing is stored.</p>
+    <aside class="say">
+      <span class="say__label">Opening line</span>
+      <p>"This page is both my presentation and my model. Rather than show you slides about a model,
+        I'm going to show you the model itself, running, and explain it as we go. Every number you see is
+        calculated live — I can break it and rebuild it in front of you."</p>
+    </aside>
+  </header>
+
+  <!-- ============ 01 ============ -->
+  <section class="chapter">
+    <div class="chapter__num">Section<span>01</span></div>
+    <div>
+      <h2>The task is to predict a number, not a category</h2>
+      <p class="lead">Given a person's age, sex, body mass index, number of children, smoking status and
+        region, estimate their <strong>annual medical insurance charge in dollars</strong>.</p>
+      <p>Because the output is a continuous quantity rather than a label, this is a
+        <strong>regression</strong> problem — not classification. There is no probability and no threshold
+        to cross; the model returns an amount, and we judge it by how close that amount lands to reality.</p>
+      <p>The practical reason this matters: insurance pricing is a decision where being wrong by a few
+        thousand dollars per person, multiplied across a book of policies, is expensive in a way that a
+        mislabelled image is not.</p>
+      <aside class="say">
+        <span class="say__label">Say this</span>
+        <p>"The output here is money, not a yes-or-no. That single fact decides everything else — which
+          model we use, which error metric makes sense, and how we judge whether it's any good."</p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ============ 02 ============ -->
+  <section class="chapter">
+    <div class="chapter__num">Section<span>02</span></div>
+    <div>
+      <h2>The data, and the two things worth noticing in it</h2>
+      <p>The dataset is the <strong>Medical Cost Personal Dataset</strong> from Kaggle — 1,338 rows,
+        seven columns, and <strong>no missing values</strong>, which is rarer than it sounds and is a large
+        part of why I chose it.</p>
+
+      <div class="tbl-wrap">
+        <table>
+          <caption>First five records</caption>
+          <thead><tr><th>age</th><th>sex</th><th>bmi</th><th>children</th><th>smoker</th><th>region</th><th style="text-align:right">charges</th></tr></thead>
+          <tbody>
+            <tr><td class="n">19</td><td>female</td><td class="n">27.90</td><td class="n">0</td><td>yes</td><td>southwest</td><td class="n">16,884.92</td></tr>
+            <tr><td class="n">18</td><td>male</td><td class="n">33.77</td><td class="n">1</td><td>no</td><td>southeast</td><td class="n">1,725.55</td></tr>
+            <tr><td class="n">28</td><td>male</td><td class="n">33.00</td><td class="n">3</td><td>no</td><td>southeast</td><td class="n">4,449.46</td></tr>
+            <tr><td class="n">33</td><td>male</td><td class="n">22.71</td><td class="n">0</td><td>no</td><td>northwest</td><td class="n">21,984.47</td></tr>
+            <tr><td class="n">32</td><td>male</td><td class="n">28.88</td><td class="n">0</td><td>no</td><td>northwest</td><td class="n">3,866.86</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p style="margin-top:20px">Two features of this data drive the whole model. Charges run from about
+        <strong>$1,122 to $63,770</strong> — a 57-fold spread — so the target is heavily skewed by a small
+        number of very expensive people. And <strong>smoking is not a simple yes/no effect</strong>: a smoker
+        at BMI 25 and a smoker at BMI 40 are not the same risk, which is what forces an interaction term
+        later on.</p>
+      <aside class="say">
+        <span class="say__label">Say this</span>
+        <p>"Two things to notice. One, the spread is enormous — fifty-seven times between the cheapest and
+          most expensive person. Two, look at the smoking column against the charge: it isn't a flat
+          surcharge. That observation is what shapes the model in the next section."</p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ============ 03 ============ -->
+  <section class="chapter">
+    <div class="chapter__num">Section<span>03</span></div>
+    <div>
+      <h2>The entire model is one equation</h2>
+      <p>A linear regression has no hidden layers and no internal state. It is a weighted sum. These are
+        the coefficients it learned from all 1,338 records:</p>
+
+      <div class="eqbox">
+        <div class="eq">
+          ŷ = <b>−2223.45</b><br>
+          &nbsp;&nbsp;+ 263.62 · age &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ 23.53 · bmi &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ 516.40 · children<br>
+          &nbsp;&nbsp;− 500.15 · male &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;− 20415.61 · smoker<br>
+          &nbsp;&nbsp;− 585.48 · nw &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;− 1210.13 · se &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;− 1231.11 · sw<br>
+          &nbsp;&nbsp;+ 1443.10 · (smoker × bmi)
+        </div>
+      </div>
+
+      <p>Nothing was scaled, so <strong>each coefficient is in dollars per unit of its variable</strong>.
+        Read the age term: one extra year of age adds $263.62 to the predicted charge, holding everything
+        else fixed. That directness is the reason this model was chosen over a stronger black-box.</p>
+
+      <p>Three inputs are <strong>dummy variables</strong> — 0/1 switches. <span style="font-family:var(--mono);font-size:13px">male</span>
+        is 1 or 0. Region has four categories, so it needs three dummies, and
+        <strong>northeast is the baseline</strong>, encoded as all three being zero. The region
+        coefficients are negative because they are measured relative to it.</p>
+
+      <h3 style="margin-top:30px">The one term that matters most</h3>
+      <p>The smoking terms only make sense added together:</p>
+      <div class="eqbox">
+        <div class="eq">cost of smoking &nbsp;=&nbsp; <b>−20415.61</b> &nbsp;+&nbsp; <b>1443.10</b> × bmi</div>
+      </div>
+      <p>At BMI 32 that is −20,415.61 + 46,179.08 = <strong>+$25,763</strong>. The large negative base is
+        a mathematical offset that lets the line pivot upward steeply with body mass — read alone it looks
+        absurd, which is exactly why the interaction must never be interpreted in isolation.</p>
+      <p>This term is the difference between a mediocre model and a good one. Without it, the model assumes
+        smoking adds a <em>fixed</em> amount regardless of weight, and R² is 0.784. With it, R² is
+        <strong>0.865</strong>.</p>
+      <aside class="say">
+        <span class="say__label">Say this</span>
+        <p>"This is the whole model — nine coefficients and an intercept, in dollars per unit. The one I want
+          you to look at is the last line. Smoking costs twenty thousand negative plus fourteen hundred per
+          BMI point. Those two numbers are meaningless separately and only make sense added together. That
+          term alone is the difference between explaining seventy-eight percent of the variation and
+          eighty-six."</p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ============ 04 DEMO ============ -->
+  <section class="chapter">
+    <div class="chapter__num">Section<span>04</span></div>
+    <div>
+      <h2>The model, running</h2>
+      <p>Change any input and the equation is re-evaluated immediately. There is no server behind this and
+        no table of answers — it is the formula from section 03, executed in the browser.</p>
+
+      <div class="demo" style="margin-top:28px">
+
+        <!-- controls -->
+        <div>
+          <h3>Inputs</h3>
+
+          <div class="ctl">
+            <div class="ctl__top"><label for="age">Age</label><output id="o-age">35</output></div>
+            <input type="range" id="age" min="18" max="64" step="1" value="35">
+          </div>
+
+          <div class="ctl">
+            <div class="ctl__top"><label for="bmi">Body mass index</label><output id="o-bmi">28.0</output></div>
+            <input type="range" id="bmi" min="16" max="53" step="0.1" value="28">
+            <div class="aside">Healthy band is 18.5–24.9; this data runs 16 to 53</div>
+          </div>
+
+          <div class="ctl">
+            <div class="ctl__top"><label for="children">Children</label><output id="o-children">1</output></div>
+            <input type="range" id="children" min="0" max="5" step="1" value="1">
+          </div>
+
+          <div class="ctl">
+            <div class="ctl__top"><label>Sex</label></div>
+            <div class="radios" id="seg-sex">
+              <button data-v="0" aria-pressed="true">Female</button>
+              <button data-v="1" aria-pressed="false">Male</button>
+            </div>
+          </div>
+
+          <div class="ctl">
+            <div class="ctl__top"><label>Smoker</label></div>
+            <div class="radios" id="seg-smoker">
+              <button data-v="0" aria-pressed="true">No</button>
+              <button data-v="1" aria-pressed="false">Yes</button>
+            </div>
+            <div class="aside">The strongest single driver in the dataset</div>
+          </div>
+
+          <div class="ctl">
+            <div class="ctl__top"><label>Region</label></div>
+            <div class="radios" id="seg-region">
+              <button data-v="northeast" aria-pressed="true">NE</button>
+              <button data-v="northwest" aria-pressed="false">NW</button>
+              <button data-v="southeast" aria-pressed="false">SE</button>
+              <button data-v="southwest" aria-pressed="false">SW</button>
+            </div>
+          </div>
+
+          <div class="eval">
+            <h3>Live evaluation</h3>
+            <div id="evalrows"></div>
+            <div class="eval__tot"><span>Total &middot; predicted charge</span><b id="evaltot">—</b></div>
+          </div>
+        </div>
+
+        <!-- readout -->
+        <div>
+          <div class="readout">
+            <div class="readout__cap">Predicted annual charge</div>
+            <div class="figure"><span class="sym">$</span><span id="pred">0</span></div>
+            <div class="delta">
+              <b id="delta">—</b>
+              <span id="deltatxt">—</span>
+            </div>
+          </div>
+
+          <div class="bars">
+            <h3 style="margin-bottom:12px">Contribution of each term</h3>
+            <div id="barlist"></div>
+          </div>
+
+          <div class="plot">
+            <h3 style="margin-bottom:12px">This profile against all 1,338 records</h3>
+            <svg id="plot" viewBox="0 0 760 380" role="img" aria-label="BMI against annual charges"></svg>
+            <div class="plot__key">
+              <span><i style="background:#4C4941"></i>Non-smoker</span>
+              <span><i style="background:#B3261E"></i>Smoker</span>
+              <span><i style="background:none;border:2px solid #17150F"></i>This profile</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="say">
+        <span class="say__label">Say this</span>
+        <p>"Watch the smoking toggle. At BMI 28 this person costs about eight thousand. Flip smoking on and
+          it jumps past twenty-eight. Then drag BMI up to forty — because of the interaction term, the gap
+          keeps widening. That is the model behaving exactly as the equation said it would."</p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ============ 05 ============ -->
+  <section class="chapter">
+    <div class="chapter__num">Section<span>05</span></div>
+    <div>
+      <h2>How good it is, and how I know</h2>
+      <p>The coefficients were fitted by <strong>ordinary least squares</strong> — the values that minimise
+        the sum of squared errors between prediction and reality. The closed form is
+        <span style="font-family:var(--mono);font-size:13px">β̂ = (XᵀX)⁻¹Xᵀy</span>, and that single
+        expression <em>is</em> the training step.</p>
+
+      <div class="mrow">
+        <div class="mcell"><b>0.865</b><span>R² hold-out</span></div>
+        <div class="mcell"><b>$2,757</b><span>Mean abs. error</span></div>
+        <div class="mcell"><b>$4,574</b><span>RMSE</span></div>
+        <div class="mcell"><b>0.837</b><span>5-fold CV R²</span></div>
+      </div>
+
+      <p>All four are measured on the <strong>20% of records held back</strong> during training, so they
+        describe performance on data the model has never seen. <strong>R² 0.865</strong> means the model
+        accounts for 86.5% of the variation in charges; the remaining 14.5% is individual difference these
+        six inputs simply do not capture.</p>
+      <p><strong>MAE $2,757</strong> is the number to quote if someone asks how accurate it is in plain
+        terms — a typical prediction misses by about that much. RMSE is higher at $4,574 because it squares
+        the errors before averaging, so it punishes large misses harder; the gap between the two tells you
+        the errors are not uniform, and a handful of people are predicted badly.</p>
+      <p>Cross-validation returns 0.837 against a hold-out of 0.865 — close enough to say the result is not
+        an artefact of one lucky split.</p>
+      <aside class="say">
+        <span class="say__label">Say this</span>
+        <p>"All four numbers come from data held back during training, so this is genuinely out-of-sample.
+          If you only remember one figure, make it the mean absolute error — twenty-seven hundred dollars,
+          which is a sentence a non-technical person can actually act on."</p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ============ 06 ============ -->
+  <section class="chapter">
+    <div class="chapter__num">Section<span>06</span></div>
+    <div>
+      <h2>What this model cannot do</h2>
+      <p><strong>It is priced in the wrong country.</strong> These are US insurance charges in dollars.
+        They reflect US medical pricing and tell you nothing about Indian premiums.</p>
+      <p><strong>It knows no medical history.</strong> The six inputs are what a form captures. They do not
+        include diagnoses, prescriptions, family history or claims — the things that actually drive real
+        underwriting.</p>
+      <p><strong>It assumes a straight line.</strong> The relationship between BMI and cost is almost
+        certainly not linear forever. Outside the training range — BMI below 16 or above 53 — the model is
+        extrapolating, and its answer there should not be trusted. One concrete example: the formula implies
+        smoking becomes <em>cheaper</em> below BMI 14.15, which is nonsense, and nobody in the data is
+        anywhere near that.</p>
+      <p><strong>The data is small and observational.</strong> 1,338 rows is enough to demonstrate a method
+        and not enough to build a pricing engine. The model describes correlation in this sample; it does
+        not establish that any input causes the charge.</p>
+      <aside class="say">
+        <span class="say__label">Closing line</span>
+        <p>"I'd rather state the limits than have you find them. Wrong country, no medical history, assumes a
+          straight line, and a small sample. What it demonstrates is the method — and the method is what the
+          project is about. Thank you."</p>
+      </aside>
+
+      <div class="footnote">
+        <b>Dataset</b> — Medical Cost Personal Dataset, Kaggle. 1,338 records, 7 columns, no missing values.<br>
+        <b>Model</b> — ordinary least squares with a smoker×BMI interaction, fitted in scikit-learn.
+        80/20 hold-out split, 5-fold cross-validation. R² 0.865 · MAE $2,757 · RMSE $4,574 · CV R² 0.837.<br>
+        <b>Reproduce</b> — every figure on this page is computed from the nine coefficients in section 03.
+        Change a slider and the browser re-evaluates that equation directly.
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+const D = {"intercept":-2223.4539227138503,"coef":{"age":263.62022763286984,"bmi":23.532852592809434,"children":516.4034041643826,"male":-500.14597408180686,"smoker":-20415.611205090507,"nw":-585.4780447872503,"se":-1210.1311969177664,"sw":-1231.107735484137,"smoker_x_bmi":1443.0963996140888},"metrics":{"r2":0.8652503208873078,"mae":2756.898659517961,"rmse":4573.807686290384},"cv_r2":0.8370732623687152,"n":1338,"avg_charge":13270.422265141257,"avg_smoker":32050.23183153284,"avg_nonsmoker":8434.268297856204,"points":[[27.9,16885.0,1],[33.8,1726.0,0],[33.0,4449.0,0],[22.7,21984.0,0],[28.9,3867.0,0],[25.7,3757.0,0],[33.4,8241.0,0],[27.7,7282.0,0],[29.8,6406.0,0],[25.8,28923.0,0],[26.2,2721.0,0],[26.3,27809.0,1],[34.4,1827.0,0],[39.8,11091.0,0],[42.1,39612.0,1],[24.6,1837.0,0],[30.8,10797.0,0],[23.8,2395.0,0],[40.3,10602.0,0],[35.3,36837.0,1],[36.0,13229.0,0],[32.4,4150.0,0],[34.1,1137.0,0],[31.9,37702.0,1],[28.0,6204.0,0],[27.7,14001.0,0],[23.1,14452.0,0],[32.8,12269.0,0],[17.4,2775.0,0],[36.3,38711.0,1],[35.6,35586.0,1],[26.3,2198.0,0],[28.6,4688.0,0],[28.3,13770.0,0],[36.4,51195.0,1],[20.4,1625.0,0],[33.0,15612.0,0],[20.8,2302.0,0],[36.7,39774.0,1],[39.9,48173.0,1],[26.6,3046.0,0],[36.6,4950.0,0],[21.8,6272.0,0],[30.8,6314.0,0],[37.0,6080.0,0],[37.3,20630.0,0],[38.7,3393.0,0],[34.8,3557.0,0],[24.5,12630.0,0],[35.2,38709.0,1],[35.6,2211.0,0],[33.6,3580.0,0],[28.0,23568.0,1],[34.4,37743.0,1],[28.7,8060.0,0],[37.0,47496.0,1],[31.8,13607.0,0],[31.7,34303.0,1],[22.9,23245.0,1],[37.3,5990.0,0],[27.4,8606.0,0],[33.7,4505.0,0],[24.7,30167.0,0],[25.9,4134.0,0],[22.4,14712.0,1],[28.9,1743.0,0],[39.1,14235.0,0],[26.3,6389.0,0],[36.2,5920.0,0],[24.0,17663.0,1],[24.8,16578.0,1],[28.5,6799.0,0],[28.1,11742.0,0],[32.0,11947.0,0],[27.4,7727.0,0],[34.0,11357.0,0],[29.6,3947.0,0],[35.5,1532.0,0],[39.8,2755.0,0],[33.0,6571.0,0],[26.9,4441.0,0],[38.3,7935.0,0],[37.6,37165.0,1],[41.2,11034.0,0],[34.8,39837.0,1],[22.9,21099.0,1],[31.2,43579.0,1],[27.2,11073.0,0],[27.7,8027.0,0],[27.0,11083.0,0],[39.5,2027.0,0],[24.8,10942.0,0],[29.8,30185.0,1],[34.8,5729.0,0],[31.3,47291.0,1],[37.6,3767.0,0],[30.8,12105.0,0],[38.3,10226.0,0],[19.9,22413.0,1],[19.3,15821.0,1],[31.6,6186.0,0],[25.5,3645.0,0],[30.1,21345.0,0],[29.9,30942.0,1],[27.5,5004.0,0],[28.0,17560.0,1],[28.4,2332.0,0],[30.9,3877.0,0],[27.9,2867.0,0],[35.1,47056.0,1],[33.6,10825.0,0],[29.7,11881.0,0],[30.8,4647.0,0],[35.7,2405.0,0],[32.2,11488.0,0],[28.6,30260.0,0],[49.1,11381.0,0],[27.9,19108.0,1],[27.2,8601.0,0],[23.4,6686.0,0],[37.1,7740.0,0],[23.8,1706.0,0],[29.0,2257.0,0],[31.4,39556.0,1],[33.9,10115.0,0],[28.8,3385.0,0],[28.3,17081.0,1],[37.4,9635.0,0],[17.8,32734.0,1],[34.7,6082.0,0],[26.5,12815.0,0],[22.0,13616.0,0],[35.9,11164.0,0],[25.6,1633.0,0],[28.8,2457.0,0],[28.1,2156.0,0],[34.1,1261.0,0],[25.2,2046.0,0],[31.9,27323.0,0],[36.0,2167.0,0],[22.4,27376.0,0],[32.5,3491.0,0],[25.3,18972.0,1],[29.7,18158.0,0],[28.7,20746.0,1],[38.8,5138.0,0],[30.5,40721.0,1],[37.7,9878.0,0],[37.4,10960.0,0],[28.4,1843.0,0],[24.1,5125.0,0],[29.7,7790.0,0],[37.1,6334.0,0],[23.4,19965.0,1],[25.5,7077.0,0],[39.5,6949.0,0],[24.4,21224.0,1],[25.2,15518.0,1],[35.5,36950.0,1],[27.8,19749.0,0],[26.6,21349.0,1],[36.9,36149.0,1],[39.6,10451.0,0],[29.8,5152.0,0],[29.6,5028.0,0],[28.2,10407.0,0],[37.0,4831.0,0],[33.2,6129.0,0],[31.8,2719.0,0],[18.9,4828.0,0],[41.5,13405.0,0],[30.3,8117.0,0],[16.0,1695.0,0],[34.8,5246.0,0],[33.3,2855.0,0],[37.7,48824.0,1],[27.8,6456.0,0],[29.2,10436.0,0],[28.9,8823.0,0],[33.2,8538.0,0],[28.6,11736.0,0],[38.3,1632.0,0],[19.9,4005.0,0],[26.4,7419.0,0],[30.7,7731.0,0],[41.9,43753.0,1],[29.9,3982.0,0],[30.9,5326.0,0],[32.2,6776.0,0],[32.1,4923.0,0],[31.6,12558.0,0],[26.2,4884.0,0],[25.7,2138.0,0],[26.6,12044.0,0],[34.4,1137.0,0],[30.6,1640.0,0],[32.8,5650.0,0],[28.6,8517.0,0],[18.1,9644.0,0],[39.3,14902.0,0],[32.1,2131.0,0],[32.2,8871.0,0],[24.0,13012.0,0],[36.1,37134.0,1],[22.3,7147.0,0],[28.9,4338.0,0],[26.4,11743.0,0],[27.7,20984.0,1],[31.8,13881.0,0],[41.2,6610.0,0],[33.0,1980.0,0],[30.9,8163.0,0],[28.5,3538.0,0],[26.7,5003.0,0],[30.9,8520.0,0],[37.1,7372.0,0],[26.6,10356.0,0],[23.1,2484.0,0],[29.9,3393.0,0],[23.2,25082.0,0],[33.7,5012.0,0],[33.2,10565.0,0],[30.8,5254.0,0],[34.8,34780.0,1],[24.6,19516.0,1],[33.9,11987.0,0],[38.1,2689.0,0],[41.9,24227.0,0],[31.6,7358.0,0],[25.5,9225.0,0],[36.2,7444.0,0],[27.8,14001.0,0],[17.8,1728.0,0],[27.5,12334.0,0],[24.5,6710.0,0],[22.2,19444.0,1],[26.7,1616.0,0],[38.4,4463.0,0],[29.1,17353.0,1],[38.1,7153.0,0],[36.7,38512.0,1],[22.1,5354.0,0],[26.8,35160.0,0],[35.3,7197.0,0],[27.7,29523.0,1],[30.0,24476.0,0],[38.1,12649.0,0],[35.9,1987.0,0],[20.9,1832.0,0],[29.0,4041.0,0],[17.3,12829.0,1],[32.2,47305.0,1],[34.2,44261.0,1],[30.3,4261.0,0],[31.8,41097.0,1],[25.4,13047.0,0],[33.6,43921.0,1],[40.1,5401.0,0],[24.4,11520.0,0],[31.9,33750.0,1],[25.2,11837.0,0],[26.8,17085.0,1],[24.3,24870.0,1],[37.0,36219.0,1],[38.1,20463.0,0],[42.4,46151.0,1],[19.8,17180.0,1],[32.4,14591.0,0],[30.2,7441.0,0],[25.8,9282.0,0],[29.4,1719.0,0],[34.2,42857.0,1],[37.0,7266.0,0],[27.5,9618.0,0],[27.6,2523.0,0],[26.6,9716.0,0],[20.6,2804.0,0],[24.3,2150.0,0],[31.8,12929.0,0],[21.6,9855.0,0],[28.1,22332.0,1],[40.6,48549.0,1],[27.6,4237.0,0],[32.4,11879.0,0],[31.2,9626.0,0],[26.6,7742.0,0],[48.1,9433.0,0],[26.2,14256.0,0],[36.8,47897.0,1],[26.4,25993.0,0],[33.4,3172.0,0],[29.6,20278.0,0],[45.5,42112.0,1],[28.8,2157.0,0],[26.8,3906.0,0],[23.0,1705.0,0],[27.7,16298.0,1],[25.4,21979.0,1],[34.4,38746.0,1],[28.9,9249.0,0],[27.6,6747.0,0],[22.6,24873.0,1],[37.5,12266.0,0],[33.0,4349.0,0],[38.0,12646.0,0],[33.3,19442.0,0],[27.5,20178.0,0],[33.3,4151.0,0],[34.9,11945.0,0],[33.1,7749.0,0],[26.6,8444.0,0],[24.7,1737.0,0],[36.0,42125.0,1],[35.9,8124.0,0],[31.4,34839.0,1],[33.2,9723.0,0],[32.2,8835.0,0],[32.8,10435.0,0],[27.6,7421.0,0],[37.3,4668.0,0],[25.3,4895.0,0],[29.6,24672.0,0],[30.8,35492.0,1],[40.9,11566.0,0],[27.2,2866.0,0],[34.1,6600.0,0],[23.2,3562.0,0],[36.5,42761.0,1],[33.8,47928.0,1],[36.7,9145.0,0],[36.4,48518.0,1],[27.4,24394.0,1],[31.2,13429.0,0],[28.8,11658.0,0],[35.7,19145.0,0],[34.5,13823.0,0],[25.7,12143.0,0],[27.6,13938.0,0],[32.3,41919.0,1],[27.7,8233.0,0],[27.6,18955.0,0],[30.0,13352.0,0],[27.6,13217.0,0],[36.8,13982.0,0],[41.5,10977.0,0],[29.3,6184.0,0],[35.8,4890.0,0],[33.3,8334.0,0],[29.9,5478.0,0],[27.8,1636.0,0],[23.2,11831.0,0],[25.6,8932.0,0],[27.7,3554.0,0],[35.2,12405.0,0],[38.3,14133.0,0],[27.6,24603.0,0],[43.9,8944.0,0],[29.8,9620.0,0],[41.9,1837.0,0],[20.8,1608.0,0],[32.3,10043.0,0],[30.5,4751.0,0],[21.7,13845.0,1],[26.4,2598.0,0],[21.9,3181.0,0],[30.8,9778.0,0],[32.3,13430.0,0],[25.0,8017.0,0],[32.0,8116.0,0],[30.4,3482.0,0],[21.1,13415.0,0],[22.2,12029.0,0],[33.2,7639.0,0],[32.9,36085.0,1],[33.3,1392.0,0],[28.3,18034.0,1],[24.9,21660.0,1],[40.1,38126.0,1],[30.1,16456.0,0],[31.5,27001.0,0],[18.0,15007.0,1],[30.7,42304.0,1],[33.0,20781.0,0],[43.3,5847.0,0],[22.1,8303.0,0],[34.4,1262.0,0],[39.0,11856.0,0],[25.4,30285.0,0],[22.6,3177.0,0],[30.2,4618.0,0],[35.6,10737.0,0],[37.4,2138.0,0],[31.4,8964.0,0],[31.4,9290.0,0],[32.3,9411.0,0],[19.9,7527.0,0],[34.4,8522.0,0],[31.0,16586.0,0],[25.6,14988.0,0],[38.2,1632.0,0],[20.6,9265.0,0],[47.5,8084.0,0],[33.0,14693.0,0],[32.3,10269.0,0],[20.4,3260.0,0],[38.4,11397.0,0],[24.3,4185.0,0],[23.6,8540.0,0],[21.1,6653.0,0],[30.0,4074.0,0],[17.5,1621.0,0],[20.2,19595.0,1],[17.2,14456.0,1],[23.9,5080.0,0],[35.1,2135.0,0],[35.6,7346.0,0],[34.1,9141.0,0],[22.6,18608.0,1],[39.2,14418.0,0],[27.0,28950.0,1],[33.9,46889.0,1],[35.9,46599.0,1],[32.8,39125.0,1],[30.6,2727.0,0],[30.2,8968.0,0],[24.3,9789.0,0],[27.3,6555.0,0],[29.2,7324.0,0],[16.8,3167.0,0],[30.4,18805.0,0],[33.1,23083.0,0],[20.2,4906.0,0],[26.9,5970.0,0],[30.5,12638.0,0],[28.6,4244.0,0],[33.1,13920.0,0],[31.7,2255.0,0],[28.9,5927.0,0],[46.8,12593.0,0],[29.4,2897.0,0],[32.7,4738.0,0],[33.5,37079.0,1],[43.0,1149.0,0],[36.5,28288.0,0],[26.7,26109.0,1],[33.1,7345.0,0],[29.6,12731.0,0],[25.6,11454.0,0],[29.6,5911.0,0],[38.6,4762.0,0],[29.6,7512.0,0],[24.1,4032.0,0],[23.4,1970.0,0],[29.7,1770.0,0],[46.5,4686.0,0],[37.4,21797.0,0],[30.1,11882.0,0],[30.5,11841.0,0],[39.6,10601.0,0],[33.0,7683.0,0],[36.6,10381.0,0],[30.0,22144.0,1],[38.1,15230.0,0],[25.9,11165.0,0],[25.2,1632.0,0],[28.4,19522.0,1],[28.7,13225.0,0],[33.8,12643.0,0],[24.3,23289.0,0],[24.1,2201.0,0],[32.7,2497.0,0],[30.1,2203.0,0],[29.8,1744.0,0],[33.3,20879.0,0],[25.1,25382.0,1],[28.3,28869.0,1],[28.5,35148.0,1],[35.6,2534.0,0],[36.9,1534.0,0],[32.6,1824.0,0],[41.3,15555.0,0],[37.5,9305.0,0],[31.4,1622.0,0],[39.5,9880.0,0],[34.3,9563.0,0],[31.1,4347.0,0],[21.5,12475.0,0],[28.7,1254.0,0],[38.1,48885.0,1],[31.2,10462.0,0],[32.9,1749.0,0],[25.1,24513.0,0],[25.1,2196.0,0],[43.4,12574.0,0],[25.7,17942.0,1],[27.9,1967.0,0],[23.6,4932.0,0],[28.7,8028.0,0],[24.0,8211.0,0],[39.2,13471.0,0],[34.4,36198.0,1],[26.0,6837.0,0],[23.2,22218.0,1],[30.2,32548.0,1],[28.9,5974.0,0],[30.9,6797.0,0],[31.4,2643.0,0],[23.8,3077.0,0],[25.3,3044.0,0],[28.7,11455.0,0],[32.1,11763.0,0],[33.7,2498.0,0],[22.4,9361.0,0],[30.4,1256.0,0],[28.3,21082.0,1],[35.7,11363.0,0],[35.3,27724.0,0],[30.5,8413.0,0],[31.0,5241.0,0],[30.9,3858.0,0],[27.4,25657.0,0],[44.2,3994.0,0],[33.9,9866.0,0],[37.7,5398.0,0],[26.1,38246.0,1],[33.9,11483.0,0],[30.6,24060.0,0],[25.8,9861.0,0],[39.4,8343.0,0],[25.5,1708.0,0],[42.1,48676.0,1],[31.7,14043.0,0],[29.7,12926.0,0],[36.2,19215.0,0],[40.5,13831.0,0],[28.0,6067.0,0],[38.9,5972.0,0],[30.2,8825.0,0],[28.1,8233.0,0],[31.4,27346.0,0],[38.0,6196.0,0],[31.8,3056.0,0],[36.3,13887.0,0],[47.4,63770.0,1],[30.2,10231.0,0],[25.8,23807.0,1],[35.4,3269.0,0],[46.7,11538.0,0],[28.6,3214.0,0],[46.2,45863.0,1],[30.8,13391.0,0],[28.9,3973.0,0],[21.4,12957.0,0],[31.7,11188.0,0],[41.3,17879.0,0],[23.8,3848.0,0],[33.4,8335.0,0],[34.2,3935.0,0],[34.1,39983.0,1],[35.5,1646.0,0],[19.9,9194.0,0],[32.7,10924.0,0],[30.5,2494.0,0],[44.8,9059.0,0],[32.1,2801.0,0],[30.5,2128.0,0],[40.6,6374.0,0],[30.6,7257.0,0],[31.9,11553.0,0],[40.6,45702.0,1],[29.1,3761.0,0],[37.3,2219.0,0],[43.1,4754.0,0],[36.9,31620.0,0],[34.3,13224.0,0],[27.2,12223.0,0],[26.8,1665.0,0],[38.1,58571.0,1],[30.2,9725.0,0],[23.5,3206.0,0],[25.5,12914.0,0],[30.6,1640.0,0],[45.4,6356.0,0],[23.6,17626.0,0],[20.7,1243.0,0],[28.3,4780.0,0],[20.2,3861.0,0],[30.2,43944.0,1],[35.9,13636.0,0],[30.7,5977.0,0],[29.0,11842.0,0],[19.6,8428.0,0],[31.1,2566.0,0],[21.9,15359.0,1],[40.3,5709.0,0],[33.7,8824.0,0],[29.5,7640.0,0],[33.2,5595.0,0],[32.6,7442.0,0],[37.5,33472.0,0],[39.2,1633.0,0],[31.6,9174.0,0],[25.3,11071.0,0],[39.0,16085.0,0],[28.3,17469.0,1],[34.1,9284.0,0],[25.2,3559.0,0],[23.7,25679.0,1],[27.0,4435.0,0],[37.8,39241.0,1],[29.4,8548.0,0],[34.8,6572.0,0],[33.2,2208.0,0],[19.0,6753.0,0],[33.0,1880.0,0],[36.6,42970.0,1],[28.6,11658.0,0],[25.6,23307.0,1],[33.1,34440.0,1],[37.1,10714.0,0],[31.4,3659.0,0],[34.1,40182.0,1],[21.3,9182.0,0],[33.5,34618.0,1],[28.8,12130.0,0],[26.0,3736.0,0],[28.9,6749.0,0],[42.5,11327.0,0],[38.0,11366.0,0],[39.0,42983.0,1],[36.1,10086.0,0],[29.3,1978.0,0],[35.5,3367.0,0],[22.7,7173.0,0],[39.7,9391.0,0],[38.2,14411.0,0],[24.5,2709.0,0],[38.1,24915.0,0],[26.4,20149.0,1],[33.7,12949.0,0],[42.4,6666.0,0],[28.3,32787.0,1],[33.9,13144.0,0],[35.0,4467.0,0],[35.3,18806.0,0],[30.8,10141.0,0],[26.2,6124.0,0],[23.4,8252.0,0],[28.5,1712.0,0],[33.0,12431.0,0],[42.7,9801.0,0],[39.6,10580.0,0],[31.1,8281.0,0],[36.3,8528.0,0],[35.2,12245.0,0],[25.3,24667.0,1],[42.4,3410.0,0],[33.2,4059.0,0],[35.9,26392.0,0],[28.8,14394.0,0],[46.5,6436.0,0],[24.0,22192.0,0],[31.5,5149.0,0],[33.7,1136.0,0],[23.0,27038.0,1],[38.1,42560.0,1],[28.7,8703.0,0],[32.8,40003.0,1],[32.0,45710.0,1],[29.8,6500.0,0],[31.6,4838.0,0],[31.2,3944.0,0],[29.7,4400.0,0],[31.0,6185.0,0],[43.9,46201.0,1],[21.4,7223.0,0],[40.8,12486.0,0],[31.4,46131.0,1],[36.1,12364.0,0],[23.2,10157.0,0],[17.4,2585.0,0],[20.3,1242.0,0],[35.3,40104.0,1],[24.3,9863.0,0],[18.5,4766.0,0],[26.4,11244.0,0],[26.1,7730.0,0],[41.7,5439.0,0],[24.1,26237.0,0],[31.1,34806.0,1],[27.4,2104.0,0],[36.2,8068.0,0],[32.4,2362.0,0],[23.7,2353.0,0],[34.8,3578.0,0],[40.2,3201.0,0],[32.3,29186.0,0],[35.8,40274.0,1],[33.7,10976.0,0],[39.3,3501.0,0],[34.9,2021.0,0],[44.7,9542.0,0],[41.5,9504.0,0],[26.4,5385.0,0],[29.5,8931.0,0],[32.9,5375.0,0],[38.1,44400.0,1],[28.7,10264.0,0],[30.5,6113.0,0],[27.7,5469.0,0],[35.2,1728.0,0],[23.5,10107.0,0],[30.7,8311.0,0],[40.5,1984.0,0],[22.6,2458.0,0],[28.9,12147.0,0],[22.6,9567.0,0],[24.3,13113.0,0],[36.7,10848.0,0],[33.4,12232.0,0],[40.7,9876.0,0],[36.6,11265.0,0],[37.4,12979.0,0],[35.4,1263.0,0],[27.1,10106.0,0],[39.0,40932.0,1],[28.4,6665.0,0],[21.8,16658.0,1],[40.3,2218.0,0],[36.1,6781.0,0],[24.4,19362.0,1],[21.4,10065.0,0],[30.1,4235.0,0],[27.3,9447.0,0],[32.1,14007.0,0],[34.8,9584.0,0],[38.4,40419.0,1],[23.7,3484.0,0],[31.7,36189.0,1],[35.5,44585.0,1],[24.0,8604.0,0],[29.1,18246.0,1],[34.1,43254.0,1],[26.6,3758.0,0],[26.4,8827.0,0],[30.1,9910.0,0],[27.0,11738.0,0],[21.8,1627.0,0],[36.0,8557.0,0],[30.9,3063.0,0],[26.4,19539.0,1],[29.0,1906.0,0],[37.9,14211.0,0],[22.8,11834.0,0],[33.6,17128.0,0],[27.6,5031.0,0],[22.8,7986.0,0],[27.8,23065.0,1],[37.4,5429.0,0],[38.2,36308.0,1],[34.6,3926.0,0],[35.2,2417.0,0],[27.1,19041.0,1],[26.0,3071.0,0],[25.2,9095.0,0],[31.8,11843.0,0],[32.3,8063.0,0],[29.0,7051.0,0],[39.7,14319.0,0],[19.5,6933.0,0],[36.1,27941.0,0],[26.7,11151.0,0],[36.5,12797.0,0],[28.9,17749.0,1],[34.2,7262.0,0],[33.3,10560.0,0],[32.3,6987.0,0],[39.8,7448.0,0],[34.3,5934.0,0],[28.9,9870.0,0],[24.4,18259.0,1],[41.1,1147.0,0],[36.0,9386.0,0],[27.6,24520.0,1],[29.3,4351.0,0],[27.7,6414.0,0],[37.0,12741.0,0],[36.9,1917.0,0],[22.5,5210.0,0],[29.9,13458.0,0],[41.8,5662.0,0],[27.6,1252.0,0],[23.2,2732.0,0],[20.9,21196.0,1],[31.9,7209.0,0],[28.5,18311.0,1],[44.2,4266.0,0],[22.9,4720.0,0],[33.1,11848.0,0],[24.8,17905.0,1],[26.2,7047.0,0],[36.0,14314.0,0],[22.3,2103.0,0],[42.2,38793.0,1],[26.5,1816.0,0],[35.8,7732.0,0],[41.4,28477.0,0],[36.6,2137.0,0],[30.1,1132.0,0],[25.8,3310.0,0],[30.8,9415.0,0],[42.9,6361.0,0],[21.0,11014.0,0],[22.5,4429.0,0],[34.4,5584.0,0],[31.5,1878.0,0],[24.2,2843.0,0],[37.1,3598.0,0],[26.1,23401.0,1],[35.5,55135.0,1],[33.7,7446.0,0],[17.7,2681.0,0],[31.1,1622.0,0],[29.8,8219.0,0],[24.3,12524.0,0],[31.8,16069.0,0],[31.8,43814.0,1],[28.0,20774.0,1],[30.8,39597.0,1],[21.9,6117.0,0],[33.1,13394.0,0],[25.8,5266.0,0],[23.8,4720.0,0],[34.4,11744.0,0],[33.8,5377.0,0],[36.0,7160.0,0],[31.5,4402.0,0],[28.3,11658.0,0],[23.5,6402.0,0],[31.4,12622.0,0],[31.1,1526.0,0],[24.7,12324.0,0],[32.8,36021.0,1],[29.8,27534.0,1],[30.5,10072.0,0],[32.5,45009.0,1],[34.2,9873.0,0],[50.4,2438.0,0],[24.1,2974.0,0],[32.8,10602.0,0],[30.8,37270.0,1],[32.3,14120.0,0],[35.5,42112.0,1],[23.8,11730.0,0],[23.8,24107.0,1],[29.6,1875.0,0],[33.1,40974.0,1],[24.1,15818.0,1],[32.2,18218.0,0],[28.1,10965.0,0],[47.6,46114.0,1],[28.0,7151.0,0],[33.5,12270.0,0],[19.9,5458.0,0],[25.4,8782.0,0],[29.9,6600.0,0],[37.3,1141.0,0],[43.7,11576.0,0],[23.7,13130.0,0],[24.3,4392.0,0],[36.2,8458.0,0],[29.5,3392.0,0],[24.9,5967.0,0],[30.1,6849.0,0],[21.9,8891.0,0],[28.1,2690.0,0],[27.1,26140.0,0],[33.4,6654.0,0],[28.8,6282.0,0],[29.5,6312.0,0],[34.8,3443.0,0],[27.4,2789.0,0],[22.1,2586.0,0],[37.0,46255.0,1],[26.7,4878.0,0],[28.9,19720.0,1],[29.0,27218.0,1],[30.0,5272.0,0],[39.5,1683.0,0],[33.6,11945.0,0],[26.9,29331.0,1],[29.0,7244.0,0],[24.0,10423.0,0],[38.9,44203.0,1],[32.1,13555.0,0],[44.0,13064.0,0],[20.0,19798.0,1],[25.6,2222.0,0],[40.3,1635.0,0],[22.5,2117.0,0],[22.5,8689.0,0],[40.9,48674.0,1],[27.3,4661.0,0],[36.9,8126.0,0],[35.1,12645.0,0],[29.4,4564.0,0],[32.6,4847.0,0],[32.3,7634.0,0],[39.8,15170.0,0],[24.6,17496.0,1],[28.3,2639.0,0],[31.7,33733.0,1],[26.7,14383.0,0],[27.5,7627.0,0],[24.6,5258.0,0],[34.0,2473.0,0],[26.9,21774.0,1],[22.9,35069.0,1],[28.2,13042.0,0],[34.2,5245.0,0],[25.0,13451.0,0],[33.2,13463.0,0],[31.0,5488.0,0],[35.8,4320.0,0],[23.2,6250.0,0],[32.1,25333.0,0],[23.4,2914.0,0],[20.1,12032.0,0],[39.2,13471.0,0],[34.2,6290.0,0],[46.5,2927.0,0],[32.5,6238.0,0],[25.8,10097.0,0],[35.3,7348.0,0],[37.2,4673.0,0],[27.5,12234.0,0],[29.7,32109.0,0],[24.2,8966.0,0],[26.2,2304.0,0],[29.5,9488.0,0],[23.2,1122.0,0],[46.1,9550.0,0],[40.2,2217.0,0],[22.6,1628.0,0],[39.9,12983.0,0],[35.8,11674.0,0],[35.8,7160.0,0],[34.2,39047.0,1],[31.3,6359.0,0],[29.7,19933.0,1],[18.3,11535.0,0],[42.9,47463.0,1],[28.4,4527.0,0],[30.2,38999.0,1],[27.8,20010.0,1],[39.5,3876.0,0],[30.8,42000.0,1],[26.8,12610.0,0],[35.0,41034.0,1],[36.7,28469.0,0],[39.6,2730.0,0],[25.9,3353.0,0],[35.2,14475.0,0],[24.8,9501.0,0],[36.8,26467.0,0],[27.1,4746.0,0],[24.8,23967.0,1],[25.4,7518.0,0],[25.7,3280.0,0],[34.3,8597.0,0],[28.2,10703.0,0],[23.6,4992.0,0],[20.2,2528.0,0],[40.5,1759.0,0],[35.4,2323.0,0],[22.9,16139.0,1],[40.1,7804.0,0],[29.1,2903.0,0],[40.0,9705.0,0],[29.9,4889.0,0],[25.5,25517.0,0],[21.4,4500.0,0],[25.9,19200.0,1],[30.6,16796.0,0],[30.1,4915.0,0],[25.8,7625.0,0],[30.1,8410.0,0],[27.6,28340.0,0],[34.7,4519.0,0],[20.5,14572.0,1],[19.8,3379.0,0],[27.8,7145.0,0],[31.6,10118.0,0],[28.3,5484.0,0],[20.0,16420.0,1],[23.3,7986.0,0],[34.1,7419.0,0],[36.9,13888.0,0],[36.3,6552.0,0],[26.9,5268.0,0],[23.0,17362.0,1],[32.7,34473.0,1],[25.8,1973.0,0],[29.6,21232.0,0],[19.2,8628.0,0],[31.7,4433.0,0],[29.3,4438.0,0],[28.2,24915.0,1],[25.0,23241.0,0],[27.7,9958.0,0],[22.8,8269.0,0],[20.1,18768.0,1],[33.3,36580.0,0],[32.3,8765.0,0],[27.6,5384.0,0],[25.5,12125.0,0],[24.6,2709.0,0],[34.2,3988.0,0],[35.8,12495.0,0],[32.7,26019.0,0],[37.0,8799.0,0],[31.0,35596.0,1],[36.1,42211.0,1],[23.3,1711.0,0],[45.3,8570.0,0],[34.6,2020.0,0],[26.0,16451.0,1],[18.7,21595.0,0],[31.6,9850.0,0],[17.3,6878.0,0],[23.7,21677.0,1],[35.2,44424.0,1],[27.9,4138.0,0],[21.6,13748.0,1],[38.4,12950.0,0],[23.0,12094.0,0],[37.1,37484.0,1],[30.5,39726.0,1],[28.9,2251.0,0],[27.3,22494.0,0],[28.0,20235.0,1],[23.1,1705.0,0],[30.7,33476.0,1],[25.8,3161.0,0],[35.2,11394.0,0],[24.7,21881.0,1],[25.1,7325.0,0],[52.6,44501.0,1],[22.5,3594.0,0],[30.9,39728.0,1],[37.0,8023.0,0],[26.4,14395.0,0],[29.8,9288.0,0],[29.8,25309.0,1],[21.5,3353.0,0],[27.6,10595.0,0],[28.9,8278.0,0],[31.8,17929.0,0],[39.5,2481.0,0],[33.8,4463.0,0],[32.0,1982.0,0],[27.9,11554.0,0],[41.1,48970.0,1],[28.6,6548.0,0],[25.6,5709.0,0],[25.3,7045.0,0],[37.3,8978.0,0],[42.7,5757.0,0],[21.7,14350.0,0],[31.9,10929.0,0],[37.1,39872.0,1],[31.4,13974.0,0],[31.3,1910.0,0],[28.9,12097.0,0],[18.3,13204.0,0],[29.6,4563.0,0],[32.0,8551.0,0],[26.0,2102.0,0],[31.7,34672.0,1],[33.7,15162.0,0],[21.8,11884.0,0],[27.8,4454.0,0],[19.9,5856.0,0],[31.5,4076.0,0],[30.5,15020.0,0],[18.3,19023.0,1],[29.0,10796.0,0],[31.5,11353.0,0],[47.7,9749.0,0],[22.1,10577.0,0],[36.2,41676.0,1],[29.8,11287.0,0],[32.7,3591.0,0],[30.4,33908.0,1],[33.7,11299.0,0],[31.4,4561.0,0],[35.0,44641.0,1],[33.8,1675.0,0],[30.9,23046.0,0],[34.0,3227.0,0],[19.1,16776.0,1],[28.6,11253.0,0],[38.9,3471.0,0],[36.1,11363.0,0],[29.8,20421.0,0],[31.2,10339.0,0],[29.9,8988.0,0],[26.2,10494.0,0],[30.0,2904.0,0],[20.4,8605.0,0],[32.3,11512.0,0],[38.4,41949.0,1],[25.9,24181.0,1],[26.3,5312.0,0],[24.5,2396.0,0],[32.7,10807.0,0],[29.6,9222.0,0],[33.3,36125.0,1],[35.8,38283.0,1],[19.9,5693.0,0],[31.4,34166.0,1],[38.2,8347.0,0],[36.9,46661.0,1],[32.4,18903.0,0],[42.8,40904.0,1],[25.1,14255.0,0],[29.9,10215.0,0],[35.9,5837.0,0],[32.8,14358.0,0],[18.6,1729.0,0],[23.9,8582.0,0],[45.9,3693.0,0],[40.3,20709.0,0],[18.3,9991.0,0],[33.8,19673.0,0],[28.1,11086.0,0],[25.0,7624.0,0],[22.2,3176.0,0],[30.2,3704.0,0],[32.5,36899.0,1],[37.1,9048.0,0],[32.6,7955.0,0],[24.9,27118.0,0],[32.3,6338.0,0],[32.3,9630.0,0],[32.8,11289.0,0],[32.8,52591.0,1],[31.9,2262.0,0],[21.5,10792.0,0],[34.1,5980.0,0],[30.3,2204.0,0],[36.5,12236.0,0],[32.6,40941.0,1],[35.8,5630.0,0],[27.9,11015.0,0],[22.1,7228.0,0],[44.9,39723.0,1],[23.2,14426.0,0],[30.6,2460.0,0],[41.1,3990.0,0],[34.6,7727.0,0],[42.1,5124.0,0],[38.8,18963.0,0],[28.2,2201.0,0],[28.3,7154.0,0],[26.1,5228.0,0],[40.4,10983.0,0],[24.6,4529.0,0],[35.2,4671.0,0],[34.1,6112.0,0],[27.4,17179.0,1],[26.7,22479.0,1],[41.9,11094.0,0],[29.3,6458.0,0],[32.1,4434.0,0],[27.1,2154.0,0],[24.1,23888.0,1],[27.4,6497.0,0],[34.9,2899.0,0],[29.8,19350.0,1],[41.3,7651.0,0],[29.9,2851.0,0],[30.3,2633.0,0],[27.4,9447.0,0],[28.5,18328.0,1],[23.6,8604.0,0],[35.6,37465.0,1],[32.7,13845.0,0],[25.3,21771.0,1],[28.0,13127.0,0],[32.8,5327.0,0],[21.8,13725.0,0],[32.4,13019.0,0],[36.6,8671.0,0],[21.8,4134.0,0],[27.9,18839.0,0],[30.0,33308.0,1],[33.5,5700.0,0],[29.4,6394.0,0],[25.8,4935.0,0],[24.3,6199.0,0],[40.4,8733.0,0],[32.1,2055.0,0],[32.3,9964.0,0],[27.3,18223.0,1],[17.9,5117.0,0],[34.8,36911.0,0],[33.4,38415.0,1],[25.6,20297.0,1],[37.1,12347.0,0],[30.9,5373.0,0],[34.1,23563.0,0],[21.5,1702.0,0],[33.3,10807.0,0],[31.3,3956.0,0],[39.1,12890.0,0],[25.1,5416.0,0],[37.3,4058.0,0],[34.6,41662.0,1],[30.2,7537.0,0],[21.9,4718.0,0],[25.0,6594.0,0],[25.3,8443.0,0],[24.4,26126.0,1],[23.9,6858.0,0],[39.8,4796.0,0],[16.8,6641.0,0],[37.2,7162.0,0],[34.4,10594.0,0],[30.3,11938.0,0],[34.5,60021.0,1],[21.8,20167.0,1],[24.6,12480.0,0],[23.3,11346.0,0],[27.8,8516.0,0],[31.1,2700.0,0],[21.7,14450.0,0],[28.2,12224.0,0],[22.7,6986.0,0],[42.1,3238.0,0],[41.8,47270.0,1],[37.0,49578.0,1],[21.3,4296.0,0],[33.1,3172.0,0],[33.3,1136.0,0],[24.3,5615.0,0],[25.7,9102.0,0],[29.4,6059.0,0],[39.8,1634.0,0],[33.6,37608.0,1],[29.8,18648.0,1],[19.8,1242.0,0],[27.3,16233.0,1],[29.3,15829.0,0],[27.7,4415.0,0],[37.9,6474.0,0],[36.4,11437.0,0],[27.6,11306.0,0],[37.7,30064.0,0],[23.2,10198.0,0],[20.5,4544.0,0],[37.1,3277.0,0],[28.1,6770.0,0],[29.9,7338.0,0],[33.3,10371.0,0],[23.8,26927.0,1],[30.5,10704.0,0],[31.1,34254.0,1],[33.3,1880.0,0],[27.5,8615.0,0],[33.9,3293.0,0],[34.5,3022.0,0],[25.5,14478.0,0],[27.6,4747.0,0],[27.1,17043.0,1],[23.7,10959.0,0],[30.4,2742.0,0],[29.7,4357.0,0],[29.9,22462.0,1],[26.8,4189.0,0],[33.3,8284.0,0],[27.6,24536.0,1],[21.7,14283.0,1],[30.0,1720.0,0],[36.3,47404.0,1],[24.3,8535.0,0],[17.3,3733.0,0],[25.9,5472.0,0],[39.4,38345.0,1],[34.3,7147.0,0],[19.9,7134.0,0],[34.9,34829.0,1],[23.2,1515.0,0],[25.7,9302.0,0],[25.2,11931.0,0],[22.0,1965.0,0],[26.1,1709.0,0],[26.5,4340.0,0],[27.5,5261.0,0],[25.7,2711.0,0],[30.4,62593.0,1],[30.9,46718.0,1],[20.8,3209.0,0],[27.8,37830.0,1],[24.6,21259.0,1],[27.7,2465.0,0],[21.9,16115.0,1],[28.1,21472.0,1],[30.2,33901.0,1],[32.2,6876.0,0],[26.3,6941.0,0],[26.7,4571.0,0],[42.9,4536.0,0],[34.7,36398.0,1],[23.7,18766.0,1],[28.3,11272.0,0],[20.6,1732.0,0],[53.1,1163.0,0],[39.7,19497.0,0],[26.3,7202.0,0],[31.1,5425.0,0],[26.7,28101.0,1],[38.8,12981.0,0],[40.4,43896.0,1],[25.9,4240.0,0],[33.5,13143.0,0],[32.9,7050.0,0],[30.0,9378.0,0],[24.2,22396.0,0],[38.6,10325.0,0],[25.7,12629.0,0],[33.4,10796.0,0],[44.7,11412.0,0],[31.0,10601.0,0],[31.9,2206.0,0],[36.9,1630.0,0],[25.8,2008.0,0],[29.1,29141.0,1]]};
+
+const state = { age:35, bmi:28, children:1, male:0, smoker:0, region:'northeast' };
+const $ = id => document.getElementById(id);
+const money = n => Math.round(n).toLocaleString('en-US');
+const C = D.coef;
+
+function terms(){
+  const s = state;
+  const smoke = s.smoker ? (C.smoker + C.smoker_x_bmi * s.bmi) : 0;
+  const region = s.region === 'northwest' ? C.nw
+               : s.region === 'southeast' ? C.se
+               : s.region === 'southwest' ? C.sw : 0;
+  return [
+    { name:'Smoking',  v: smoke },
+    { name:'Age',      v: C.age * s.age },
+    { name:'BMI',      v: C.bmi * s.bmi },
+    { name:'Children', v: C.children * s.children },
+    { name:'Sex',      v: C.male * s.male },
+    { name:'Region',   v: region }
+  ];
+}
+
+function render(){
+  const t = terms();
+  const pred = D.intercept + t.reduce((a,b) => a + b.v, 0);
+
+  $('pred').textContent = money(pred);
+
+  const diff = pred - D.avg_charge;
+  const pct = Math.abs(diff / D.avg_charge * 100);
+  const dEl = $('delta');
+  dEl.textContent = (diff >= 0 ? '+' : '−') + '$' + money(Math.abs(diff)) + ' · ' + pct.toFixed(0) + '%';
+  dEl.className = diff >= 0 ? 'up' : 'dn';
+  $('deltatxt').textContent = diff >= 0
+    ? 'above the dataset average of $' + money(D.avg_charge)
+    : 'below the dataset average of $' + money(D.avg_charge);
+
+  const maxAbs = Math.max(...t.map(x => Math.abs(x.v)), 500);
+  $('barlist').innerHTML = t.map(x => {
+    const zero = Math.abs(x.v) < 1;
+    const w = (Math.abs(x.v) / maxAbs) * 50;
+    const cls = x.v >= 0 ? 'p' : 'n';
+    const col = zero ? 'var(--ink-3)' : (x.v >= 0 ? 'var(--accent)' : 'var(--slate)');
+    const sign = zero ? '' : (x.v >= 0 ? '+' : '−');
+    return '<div class="bar">' +
+      '<div class="bar__n">' + x.name + '</div>' +
+      '<div class="bar__t"><div class="bar__z"></div>' +
+        '<div class="bar__f ' + cls + '" style="width:' + w + '%"></div></div>' +
+      '<div class="bar__v" style="color:' + col + '">' + sign + '$' + money(Math.abs(x.v)) + '</div>' +
+    '</div>';
+  }).join('');
+
+  const labels = { Smoking:'Smoking', Age:'Age', BMI:'BMI', Children:'Children', Sex:'Sex', Region:'Region' };
+  $('evalrows').innerHTML = t.map(x => {
+    const sign = Math.abs(x.v) < 1 ? '' : (x.v >= 0 ? '+' : '−');
+    return '<div class="eval__row"><span>' + labels[x.name] + '</span><b>' +
+      sign + '$' + money(Math.abs(x.v)) + '</b></div>';
+  }).join('');
+  $('evaltot').textContent = '$' + money(pred);
+
+  drawPlot(pred);
+}
+
+/* ---------- scatter ---------- */
+const W = 760, H = 380, PL = 58, PR = 14, PT = 12, PB = 34;
+const XMIN = 15, XMAX = 55, YMAX = 65000;
+const sx = v => PL + (v - XMIN) / (XMAX - XMIN) * (W - PL - PR);
+const sy = v => PT + (1 - v / YMAX) * (H - PT - PB);
+
+function drawPlot(pred){
+  let s = '';
+  for (let y = 0; y <= 60000; y += 15000){
+    s += '<line x1="' + PL + '" y1="' + sy(y) + '" x2="' + (W - PR) + '" y2="' + sy(y) +
+         '" stroke="rgba(23,21,15,0.10)" stroke-width="1"/>';
+    s += '<text x="' + (PL - 8) + '" y="' + (sy(y) + 3.5) + '" text-anchor="end" font-family="Space Mono, monospace" ' +
+         'font-size="9" fill="#8A857A">' + (y / 1000) + 'k</text>';
+  }
+  for (let x = 20; x <= 50; x += 10){
+    s += '<text x="' + sx(x) + '" y="' + (H - 14) + '" text-anchor="middle" font-family="Space Mono, monospace" ' +
+         'font-size="9" fill="#8A857A">' + x + '</text>';
+  }
+  s += '<line x1="' + PL + '" y1="' + (H - PB) + '" x2="' + (W - PR) + '" y2="' + (H - PB) +
+       '" stroke="rgba(23,21,15,0.35)" stroke-width="1"/>';
+  s += '<text x="' + ((PL + W - PR) / 2) + '" y="' + (H - 2) + '" text-anchor="middle" ' +
+       'font-family="Space Mono, monospace" font-size="9" fill="#8A857A" letter-spacing="1">BMI</text>';
+
+  for (const [bmi, chg, smk] of D.points){
+    if (bmi < XMIN || bmi > XMAX || chg > YMAX) continue;
+    s += '<circle cx="' + sx(bmi).toFixed(1) + '" cy="' + sy(chg).toFixed(1) + '" r="2.4" fill="' +
+         (smk ? '#B3261E' : '#4C4941') + '" opacity="' + (smk ? '0.42' : '0.26') + '"/>';
+  }
+
+  const px = sx(Math.min(Math.max(state.bmi, XMIN), XMAX));
+  const py = sy(Math.min(Math.max(pred, 0), YMAX));
+  s += '<line x1="' + PL + '" y1="' + py + '" x2="' + px + '" y2="' + py + '" stroke="#17150F" stroke-width="1" stroke-dasharray="2 3" opacity="0.45"/>';
+  s += '<line x1="' + px + '" y1="' + (H - PB) + '" x2="' + px + '" y2="' + py + '" stroke="#17150F" stroke-width="1" stroke-dasharray="2 3" opacity="0.45"/>';
+  s += '<circle cx="' + px + '" cy="' + py + '" r="10" fill="none" stroke="#17150F" stroke-width="2.5"/>';
+  s += '<circle cx="' + px + '" cy="' + py + '" r="3.5" fill="#17150F"/>';
+  s += '<text x="' + (px + 15) + '" y="' + (py - 7) + '" font-family="Space Mono, monospace" font-size="10" ' +
+       'font-weight="700" fill="#17150F">$' + money(pred) + '</text>';
+
+  $('plot').innerHTML = s;
+}
+
+/* ---------- wiring ---------- */
+function bindRange(id, key, fmt){
+  const el = $(id), out = $('o-' + id);
+  const sync = () => { state[key] = parseFloat(el.value); out.textContent = fmt(state[key]); render(); };
+  el.addEventListener('input', sync); sync();
+}
+bindRange('age', 'age', v => String(v));
+bindRange('bmi', 'bmi', v => v.toFixed(1));
+bindRange('children', 'children', v => String(v));
+
+function bindSeg(id, key, cast){
+  const box = $(id);
+  box.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    [...box.children].forEach(x => x.setAttribute('aria-pressed', 'false'));
+    b.setAttribute('aria-pressed', 'true');
+    state[key] = cast(b.dataset.v);
+    render();
+  });
+}
+bindSeg('seg-sex', 'male', v => +v);
+bindSeg('seg-smoker', 'smoker', v => +v);
+bindSeg('seg-region', 'region', v => v);
+
+/* ---------- script toggle ---------- */
+const btn = $('scriptBtn');
+function setScript(on){
+  document.body.classList.toggle('script', on);
+  btn.dataset.on = on ? 'true' : 'false';
+  btn.textContent = on ? 'Script on' : 'Script off';
+}
+btn.addEventListener('click', () => setScript(!document.body.classList.contains('script')));
+document.addEventListener('keydown', e => {
+  if ((e.key === 's' || e.key === 'S') && !/^(INPUT|TEXTAREA|BUTTON)$/.test(document.activeElement.tagName)){
+    setScript(!document.body.classList.contains('script'));
+  }
+});
+
+render();
+</script>
+</body>
+</html>
